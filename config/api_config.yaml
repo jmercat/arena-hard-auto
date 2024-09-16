@@ -26,3 +26,15 @@ gpt-4-1106-preview:
     endpoints: null
     api_type: openai
     parallel: 8
+
+llama3-405b:
+    model_name: llama3-405b
+    endpoints: null
+    api_type: snova
+    parallel: 8
+
+llama3p1-405b-instruct:
+    model_name: Meta-Llama-3.1-405B-Instruct
+    endpoints: null
+    api_type: snova
+    parallel: 8

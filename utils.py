@@ -7,6 +7,7 @@ import requests
 
 from typing import Optional
 from glob import glob
+from openai._exceptions import RateLimitError
 
 # API setting constants
 API_MAX_RETRY = 16
@@ -276,7 +277,56 @@ def http_completion_gemini(model, message, temperature, max_tokens):
     output = response.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     return output
-    
+
+
+def http_completion_snova(model, messages, temperature, max_tokens):
+    api_key = os.environ["SNOVA_API"]
+    NUM_SECONDS_TO_SLEEP = 30
+    url = "https://fast-api.snova.ai/v1/chat/completions"
+    headers = {"Authorization": f"Basic {api_key}", "Content-Type": "application/json"}
+    response_format = {"type": "text"}
+
+    payload = {
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "model": model,
+        "response_format": response_format,
+        "stream": True,
+        "stream_options": {"include_usage": True},
+        "stop": ["[INST", "[INST]", "[/INST]", "[/INST]"],
+    }
+
+    response_text = API_ERROR_OUTPUT
+    try:
+        post_response = requests.post(url, json=payload, headers=headers, stream=True)
+        if (
+            post_response.status_code == 503
+            or post_response.status_code == 504
+            or post_response.status_code == 401
+            or post_response.status_code == 429
+        ):
+            print(post_response.content)
+            print(f"Attempt failed due to rate limit or gate timeout. Trying again...")
+            time.sleep(NUM_SECONDS_TO_SLEEP)
+            raise RateLimitError("Rate limit or gateway timeout", response=post_response, body=None)
+        response_text = ""
+        for line in post_response.iter_lines():
+            if line.startswith(b"data: "):
+                data_str = line.decode("utf-8")[6:]
+                try:
+                    line_json = json.loads(data_str)
+
+                    if (
+                        "choices" in line_json
+                        and len(line_json["choices"]) > 0
+                        and "content" in line_json["choices"][0]["delta"]
+                    ):
+                        response_text += line_json["choices"][0]["delta"]["content"]
+                except json.JSONDecodeError as e:
+                    pass
+    except Exception as e:
+        print(f"**API REQUEST ERROR** Reason: {e}.")
+    return response_text
 
 
 def chat_completion_cohere(model, messages, temperature, max_tokens):

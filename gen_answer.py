@@ -25,6 +25,7 @@ from utils import (
     chat_completion_openai_azure,
     chat_completion_mistral,
     http_completion_gemini,
+    http_completion_snova,
     chat_completion_cohere,
     reorg_answer_file,
     OPENAI_MODEL_LIST,
@@ -74,6 +75,11 @@ def get_answer(
                                                       temperature=temperature,
                                                       max_tokens=max_tokens,
                                                       api_dict=api_dict)
+            elif api_type == "snova":
+                output = http_completion_snova(model=endpoint_info["model_name"],
+                                               messages=conv,
+                                               temperature=temperature,
+                                               max_tokens=max_tokens)
             elif api_type == "cohere":
                 output = chat_completion_cohere(model=endpoint_info["model_name"],
                                                 messages=conv,
@@ -138,10 +144,10 @@ if __name__ == "__main__":
         answer_file = os.path.join("data", settings["bench_name"], "model_answer", f"{model}.jsonl")
         print(f"Output to {answer_file}")
 
-        if "parallel" in endpoint_info:
-            parallel = endpoint_info["parallel"]
-        else:
-            parallel = 1
+        # if "parallel" in endpoint_info:
+        #     parallel = endpoint_info["parallel"]
+        # else:
+        parallel = 1
 
         # We want to maximizes the number of tokens generate per answer: max_tokens = specified token # - input tokens #
         if "tokenizer" in endpoint_info:
